@@ -47,4 +47,3 @@ class DocumentProcessingService:
             raise
 
         return document
-    
