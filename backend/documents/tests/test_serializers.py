@@ -1,6 +1,6 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
-
+from documents.tests.utils import create_pdf_bytes
 from documents.api.serializers import DocumentSerializer
 from documents.models import Document
 
@@ -9,7 +9,7 @@ class DocumentSerializerTests(TestCase):
     def test_accepts_pdf_file(self):
         uploaded_file = SimpleUploadedFile(
             "paper.pdf",
-            b"%PDF-1.4 test content",
+            create_pdf_bytes("Scientific paper content"),
             content_type="application/pdf",
         )
 
@@ -26,8 +26,9 @@ class DocumentSerializerTests(TestCase):
 
         self.assertEqual(document.title, "Example Scientific Paper")
         self.assertEqual(document.original_filename, "paper.pdf")
-        self.assertEqual(document.status, Document.Status.UPLOADED)
-        self.assertEqual(document.page_count, 0)
+        self.assertEqual(document.status, Document.Status.READY)
+        self.assertEqual(document.page_count, 1)
+        self.assertEqual(document.pages.count(), 1)
 
     def test_rejects_non_pdf_file(self):
         uploaded_file = SimpleUploadedFile(

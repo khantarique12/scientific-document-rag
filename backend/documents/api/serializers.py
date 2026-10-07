@@ -1,7 +1,8 @@
 from pathlib import Path
 
 from rest_framework import serializers
-
+from documents.services.document_processor import DocumentProcessingService
+from documents.services.pdf_extractor import PDFExtractionError
 from documents.models import Document
 
 
@@ -36,7 +37,14 @@ class DocumentSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         uploaded_file = validated_data["file"]
 
-        return Document.objects.create(
+        document = Document.objects.create(
             original_filename=uploaded_file.name,
             **validated_data,
         )
+
+        try:
+            DocumentProcessingService().process(document)
+        except PDFExtractionError:
+            pass
+
+        return document

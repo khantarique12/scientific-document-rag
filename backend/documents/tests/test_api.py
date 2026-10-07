@@ -1,11 +1,12 @@
+import tempfile
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from documents.models import Document
-
-import tempfile
+from documents.tests.utils import create_pdf_bytes
 
 
 class DocumentAPITests(APITestCase):
@@ -21,7 +22,7 @@ class DocumentAPITests(APITestCase):
     def test_upload_pdf(self):
         uploaded_file = SimpleUploadedFile(
             "research-paper.pdf",
-            b"%PDF-1.4 test content",
+            create_pdf_bytes("Research paper content"),
             content_type="application/pdf",
         )
 
@@ -41,7 +42,9 @@ class DocumentAPITests(APITestCase):
 
         self.assertEqual(document.title, "Research Paper")
         self.assertEqual(document.original_filename, "research-paper.pdf")
-        self.assertEqual(document.status, Document.Status.UPLOADED)
+        self.assertEqual(document.status, Document.Status.READY)
+        self.assertEqual(document.page_count, 1)
+        self.assertEqual(document.pages.count(), 1)
 
     def test_rejects_non_pdf_upload(self):
         uploaded_file = SimpleUploadedFile(
@@ -62,3 +65,28 @@ class DocumentAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Document.objects.count(), 0)
         self.assertIn("file", response.data)
+
+    def test_invalid_pdf_content_is_marked_failed(self):
+        uploaded_file = SimpleUploadedFile(
+            "broken.pdf",
+            b"This has a PDF extension but is not a real PDF.",
+            content_type="application/pdf",
+        )
+
+        response = self.client.post(
+            "/api/documents/",
+            {
+                "title": "Broken PDF",
+                "file": uploaded_file,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Document.objects.count(), 1)
+
+        document = Document.objects.get()
+
+        self.assertEqual(document.status, Document.Status.FAILED)
+        self.assertEqual(document.page_count, 0)
+        self.assertEqual(document.pages.count(), 0)
