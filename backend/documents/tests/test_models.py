@@ -1,7 +1,7 @@
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
-from .models import Document, Page
+from documents.models import Document, Page
 
 
 class DocumentModelTests(TestCase):
