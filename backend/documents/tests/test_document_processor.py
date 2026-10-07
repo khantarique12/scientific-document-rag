@@ -28,13 +28,21 @@ class DocumentProcessingServiceTests(TestCase):
             },
         ]
 
-        service = DocumentProcessingService(extractor=extractor)
+        page_chunker = Mock()
+
+        service = DocumentProcessingService(
+            extractor=extractor,
+            page_chunker=page_chunker,
+        )
 
         service.process(self.document)
 
         self.document.refresh_from_db()
 
-        self.assertEqual(self.document.status, Document.Status.READY)
+        self.assertEqual(
+            self.document.status,
+            Document.Status.READY,
+        )
         self.assertEqual(self.document.page_count, 2)
         self.assertEqual(self.document.pages.count(), 2)
 
@@ -47,7 +55,18 @@ class DocumentProcessingServiceTests(TestCase):
             "Results",
         )
 
-        extractor.extract.assert_called_once_with(self.document.file.path)
+        extractor.extract.assert_called_once_with(
+            self.document.file.path
+        )
+
+        self.assertEqual(page_chunker.process.call_count, 2)
+
+        processed_page_numbers = [
+            call.args[0].page_number
+            for call in page_chunker.process.call_args_list
+        ]
+
+        self.assertEqual(processed_page_numbers, [1, 2])
 
     def test_process_marks_document_failed_when_extraction_fails(self):
         extractor = Mock()
@@ -55,13 +74,18 @@ class DocumentProcessingServiceTests(TestCase):
             "Could not extract PDF."
         )
 
-        service = DocumentProcessingService(extractor=extractor)
+        service = DocumentProcessingService(
+            extractor=extractor,
+        )
 
         with self.assertRaises(PDFExtractionError):
             service.process(self.document)
 
         self.document.refresh_from_db()
 
-        self.assertEqual(self.document.status, Document.Status.FAILED)
+        self.assertEqual(
+            self.document.status,
+            Document.Status.FAILED,
+        )
         self.assertEqual(self.document.page_count, 0)
         self.assertEqual(self.document.pages.count(), 0)

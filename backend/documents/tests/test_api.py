@@ -45,6 +45,7 @@ class DocumentAPITests(APITestCase):
         self.assertEqual(document.status, Document.Status.READY)
         self.assertEqual(document.page_count, 1)
         self.assertEqual(document.pages.count(), 1)
+        self.assertGreater(document.pages.first().chunks.count(), 0)
 
     def test_rejects_non_pdf_upload(self):
         uploaded_file = SimpleUploadedFile(
