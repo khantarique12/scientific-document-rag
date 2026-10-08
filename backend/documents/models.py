@@ -1,4 +1,5 @@
 from django.db import models
+from pgvector.django import VectorField
 
 
 class Document(models.Model):
@@ -22,6 +23,8 @@ class Document(models.Model):
 
     def __str__(self):
         return self.title
+
+
 class Page(models.Model):
     document = models.ForeignKey(
         Document,
@@ -43,6 +46,8 @@ class Page(models.Model):
 
     def __str__(self):
         return f"{self.document.title} - page {self.page_number}"
+
+
 class Chunk(models.Model):
     page = models.ForeignKey(
         Page,
@@ -51,6 +56,11 @@ class Chunk(models.Model):
     )
     chunk_index = models.PositiveIntegerField()
     text = models.TextField()
+    embedding = VectorField(
+        dimensions=384,
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

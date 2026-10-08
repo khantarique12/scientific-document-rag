@@ -1,16 +1,30 @@
+
 from django.db import transaction
 
 from documents.models import Document, Page
+from documents.services.indexing import IndexingService
 from documents.services.page_chunker import PageChunkingService
-from documents.services.pdf_extractor import PDFExtractionError, PDFExtractor
+from documents.services.pdf_extractor import PDFExtractor
 
 
 class DocumentProcessingService:
-    """Coordinate PDF extraction, page persistence, and chunking."""
+    """Coordinate PDF extraction, chunking, and vector indexing."""
 
-    def __init__(self, extractor=None, page_chunker=None):
-        self.extractor = extractor or PDFExtractor()
-        self.page_chunker = page_chunker or PageChunkingService()
+    def __init__(
+        self,
+        extractor=None,
+        page_chunker=None,
+        indexing_service=None,
+    ):
+        self.extractor = extractor if extractor is not None else PDFExtractor()
+        self.page_chunker = (
+            page_chunker if page_chunker is not None
+            else PageChunkingService()
+        )
+        self.indexing_service = (
+            indexing_service if indexing_service is not None
+            else IndexingService()
+        )
 
     def process(self, document: Document) -> Document:
         document.status = Document.Status.PROCESSING
@@ -33,8 +47,12 @@ class DocumentProcessingService:
                     ]
                 )
 
+                chunks = []
+
                 for page in pages:
-                    self.page_chunker.process(page)
+                    chunks.extend(self.page_chunker.process(page))
+
+                self.indexing_service.index_chunks(chunks)
 
                 document.page_count = len(pages)
                 document.status = Document.Status.READY
@@ -46,7 +64,7 @@ class DocumentProcessingService:
                     ]
                 )
 
-        except PDFExtractionError:
+        except Exception:
             document.status = Document.Status.FAILED
             document.save(update_fields=["status", "updated_at"])
             raise

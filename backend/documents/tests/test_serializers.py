@@ -3,10 +3,14 @@ from django.test import TestCase
 from documents.tests.utils import create_pdf_bytes
 from documents.api.serializers import DocumentSerializer
 from documents.models import Document
-
+from unittest.mock import patch
 
 class DocumentSerializerTests(TestCase):
-    def test_accepts_pdf_file(self):
+
+    @patch(
+    "documents.services.document_processor.IndexingService"
+    )
+    def test_accepts_pdf_file(self, mock_indexing_service):
         uploaded_file = SimpleUploadedFile(
             "paper.pdf",
             create_pdf_bytes("Scientific paper content"),

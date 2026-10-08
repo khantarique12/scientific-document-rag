@@ -143,3 +143,13 @@ MAILERS = {
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+OLLAMA_BASE_URL = env(
+    "OLLAMA_BASE_URL",
+    default="http://127.0.0.1:11434",
+)
+
+OLLAMA_MODEL = env(
+    "OLLAMA_MODEL",
+    default="qwen3:1.7b",
+)
