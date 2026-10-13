@@ -54,7 +54,7 @@ class PromptBuilderTests(SimpleTestCase):
             [self.chunk],
         )
 
-        self.assertIn("Cite supporting passages", prompt)
+        self.assertIn("Use citations in the format", prompt)
         self.assertIn("[Source 1]", prompt)
 
     def test_build_rejects_empty_question(self):
@@ -82,3 +82,34 @@ class PromptBuilderTests(SimpleTestCase):
 
         self.assertIn("Do not use outside knowledge", prompt)
         self.assertIn("cannot be determined", prompt)
+
+    def test_build_handles_partial_evidence(self):
+        prompt = PromptBuilder.build(
+            "What is RDF?",
+            [self.chunk],
+        )
+
+        self.assertIn(
+            "If the sources provide only partial evidence",
+            prompt,
+        )
+        self.assertIn(
+            "what can be established and what remains unknown",
+            prompt,
+        )
+
+
+    def test_build_prevents_contradictory_answers(self):
+        prompt = PromptBuilder.build(
+            "What is RDF?",
+            [self.chunk],
+        )
+
+        self.assertIn(
+            "Never append the insufficient-evidence statement",
+            prompt,
+        )
+        self.assertIn(
+            "after providing a supported answer",
+            prompt,
+        )

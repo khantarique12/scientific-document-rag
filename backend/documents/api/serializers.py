@@ -48,3 +48,19 @@ class DocumentSerializer(serializers.ModelSerializer):
             pass
 
         return document
+
+class QuestionSerializer(serializers.Serializer):
+    """Validate requests for document question answering."""
+
+    question = serializers.CharField(
+        max_length=2000,
+        allow_blank=False,
+        trim_whitespace=True,
+    )
+
+    limit = serializers.IntegerField(
+        required=False,
+        default=5,
+        min_value=1,
+        max_value=10,
+    )
