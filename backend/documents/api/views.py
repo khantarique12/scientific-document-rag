@@ -16,7 +16,11 @@ class DocumentListCreateView(generics.ListCreateAPIView):
     serializer_class = DocumentSerializer
     parser_classes = [MultiPartParser, FormParser]
 
+class DocumentDetailView(generics.RetrieveAPIView):
+    """Retrieve metadata for a single uploaded document."""
 
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
 class QuestionAnswerView(APIView):
     """Answer questions using indexed scientific documents."""
 

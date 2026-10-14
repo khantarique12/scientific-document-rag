@@ -5,7 +5,7 @@ import { FileText, RefreshCw } from "lucide-react"
 import { getDocuments } from "@/api/documents"
 import type { Document, DocumentStatus } from "@/types/document"
 import { UploadDocument } from "@/components/documents/UploadDocument"
-
+import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -165,8 +165,13 @@ export function DocumentsPage() {
                       <FileText className="size-5 shrink-0 text-muted-foreground" />
 
                       <CardTitle className="truncate text-base">
-                        {document.title}
-                      </CardTitle>
+                        <Link
+                            to={`/documents/${document.id}`}
+                            className="hover:underline"
+                        >
+                            {document.title}
+                        </Link>
+                        </CardTitle>
                     </div>
 
                     <Badge

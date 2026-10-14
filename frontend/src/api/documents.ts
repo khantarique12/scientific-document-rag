@@ -47,3 +47,19 @@ export async function uploadDocument(
 
   return data as Document
 }
+
+// Fetch one document by ID
+export async function getDocument(
+  id: number,
+  signal?: AbortSignal,
+): Promise<Document> {
+  const response = await fetch(`${API_BASE}${id}/`, { signal })
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load document (HTTP ${response.status})`,
+    )
+  }
+
+  return (await response.json()) as Document
+}

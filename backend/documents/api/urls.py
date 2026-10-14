@@ -1,7 +1,10 @@
-
 from django.urls import path
 
-from .views import DocumentListCreateView, QuestionAnswerView
+from .views import (
+    DocumentDetailView,
+    DocumentListCreateView,
+    QuestionAnswerView,
+)
 
 
 urlpatterns = [
@@ -14,5 +17,10 @@ urlpatterns = [
         "ask/",
         QuestionAnswerView.as_view(),
         name="document-ask",
+    ),
+    path(
+        "<int:pk>/",
+        DocumentDetailView.as_view(),
+        name="document-detail",
     ),
 ]
