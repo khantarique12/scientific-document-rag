@@ -1,0 +1,266 @@
+import { useState, type FormEvent } from "react"
+import { Link } from "react-router"
+import {
+  ArrowUp,
+  BookOpen,
+  ExternalLink,
+  Loader2,
+  MessageSquare,
+  Sparkles,
+} from "lucide-react"
+
+import { askQuestion } from "@/api/chat"
+import type { RAGResponse, RAGSource } from "@/types/chat"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+
+interface ChatMessage {
+  id: number
+  question: string
+  result: RAGResponse
+}
+
+function CitationLink({
+  source,
+}: {
+  source: RAGSource
+}) {
+  return (
+    <Link
+      to={`/documents/${source.document_id}?page=${source.page_number}`}
+      className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-accent"
+    >
+      <BookOpen className="size-3" />
+      Source {source.source_id}
+      <ExternalLink className="size-3" />
+    </Link>
+  )
+}
+
+function AnswerText({
+  answer,
+  sources,
+}: {
+  answer: string
+  sources: RAGSource[]
+}) {
+  const sourceMap = new Map(
+    sources.map((source) => [source.source_id, source]),
+  )
+
+  const parts = answer.split(/(\[Source \d+\])/g)
+
+  return (
+    <div className="whitespace-pre-wrap text-sm leading-7">
+      {parts.map((part, index) => {
+        const match = part.match(/^\[Source (\d+)\]$/)
+
+        if (match) {
+          const source = sourceMap.get(Number(match[1]))
+
+          if (source) {
+            return (
+              <span key={index} className="mx-1 inline-block">
+                <CitationLink source={source} />
+              </span>
+            )
+          }
+        }
+
+        return <span key={index}>{part}</span>
+      })}
+    </div>
+  )
+}
+
+export function AssistantPage() {
+  const [question, setQuestion] = useState("")
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const trimmedQuestion = question.trim()
+
+    if (!trimmedQuestion || loading) {
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const result = await askQuestion(trimmedQuestion)
+
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: Date.now(),
+          question: trimmedQuestion,
+          result,
+        },
+      ])
+
+      setQuestion("")
+    } catch (error: unknown) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unable to generate an answer.",
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+
+      {/* Header */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-6" />
+          <h1 className="text-2xl font-semibold">
+            AI Research Assistant
+          </h1>
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          Ask questions about your uploaded documents and explore
+          evidence-backed answers.
+        </p>
+      </div>
+
+      {/* Conversation */}
+      <div className="space-y-6">
+        {messages.length === 0 && (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+              <MessageSquare className="size-10 text-muted-foreground" />
+
+              <h2 className="text-lg font-semibold">
+                Ask your first question
+              </h2>
+
+              <p className="max-w-md text-sm text-muted-foreground">
+                Your assistant searches indexed documents and uses
+                retrieved passages to generate answers with citations.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {messages.map((message) => (
+          <div key={message.id} className="space-y-4">
+
+            {/* User question */}
+            <div className="flex justify-end">
+              <div className="max-w-[85%] rounded-xl bg-muted px-4 py-3 text-sm">
+                {message.question}
+              </div>
+            </div>
+
+            {/* AI response */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="size-4" />
+                  AI Answer
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent className="space-y-5">
+                <AnswerText
+                  answer={message.result.answer}
+                  sources={message.result.sources}
+                />
+
+                {message.result.citations.length > 0 && (
+                  <div className="space-y-3 border-t pt-4">
+                    <h3 className="text-sm font-semibold">
+                      Cited evidence
+                    </h3>
+
+                    <div className="flex flex-wrap gap-2">
+                      {message.result.citations.map((source) => (
+                        <Link
+                          key={source.source_id}
+                          to={`/documents/${source.document_id}?page=${source.page_number}`}
+                          className="rounded-lg border p-3 transition-colors hover:bg-accent"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">
+                              Source {source.source_id}
+                            </Badge>
+
+                            <ExternalLink className="size-3 text-muted-foreground" />
+                          </div>
+
+                          <p className="mt-2 text-sm font-medium">
+                            {source.document_title}
+                          </p>
+
+                          <p className="text-xs text-muted-foreground">
+                            Page {source.page_number}
+                          </p>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ))}
+      </div>
+
+      {/* Question form */}
+      <Card>
+        <CardContent className="pt-5">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <textarea
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                placeholder="Ask a question about your documents..."
+                disabled={loading}
+                rows={3}
+                className="flex w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+
+            {error && (
+              <p className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
+
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Answers are generated from indexed document passages.
+              </p>
+
+              <Button
+                type="submit"
+                disabled={!question.trim() || loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Thinking...
+                  </>
+                ) : (
+                  <>
+                    <ArrowUp className="size-4" />
+                    Ask
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
