@@ -48,14 +48,27 @@ class PromptBuilderTests(SimpleTestCase):
         self.assertIn("Scientific Paper", prompt)
         self.assertIn("Page: 12", prompt)
 
+    
     def test_build_includes_citation_instructions(self):
         prompt = PromptBuilder.build(
             "What is RDF?",
             [self.chunk],
         )
 
-        self.assertIn("Use citations in the format", prompt)
+        self.assertIn(
+            "Cite each factual claim immediately",
+            prompt,
+        )
+        self.assertIn(
+            "Cite only passages that directly support",
+            prompt,
+        )
+        self.assertIn(
+            "Never cite a source number that is absent",
+            prompt,
+        )
         self.assertIn("[Source 1]", prompt)
+
 
     def test_build_rejects_empty_question(self):
         with self.assertRaises(ValueError):

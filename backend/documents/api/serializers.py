@@ -64,3 +64,9 @@ class QuestionSerializer(serializers.Serializer):
         min_value=1,
         max_value=10,
     )
+
+    document_id = serializers.PrimaryKeyRelatedField(
+        queryset=Document.objects.filter(status="ready"),
+        required=False,
+        allow_null=True,
+    )

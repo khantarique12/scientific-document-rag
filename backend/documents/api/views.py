@@ -29,12 +29,14 @@ class QuestionAnswerView(APIView):
         serializer.is_valid(raise_exception=True)
 
         question = serializer.validated_data["question"]
+        document = serializer.validated_data.get("document_id")
         limit = serializer.validated_data["limit"]
 
         try:
             result = RAGService().ask(
                 question=question,
                 limit=limit,
+                document_id=document.id if document is not None else None,
             )
         except OllamaError:
             return Response(

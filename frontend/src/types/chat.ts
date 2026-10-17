@@ -5,6 +5,7 @@ export interface RAGSource {
   page_number: number
   chunk_id: number
   similarity: number
+  text: string
 }
 
 export interface RAGResponse {
