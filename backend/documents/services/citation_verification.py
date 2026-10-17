@@ -32,7 +32,7 @@ class CitationVerificationService:
         if not evidence.strip():
             raise ValueError("Evidence cannot be empty.")
 
-        # NLI expects the premise first, hypothesis second.
+        # NLI expects premise first and hypothesis second.
         scores = self.model.predict(
             [(evidence, claim)],
             apply_softmax=True,
@@ -55,3 +55,47 @@ class CitationVerificationService:
                 )
             },
         }
+
+    def find_supporting_sources(
+        self,
+        claim: str,
+        sources: list[dict],
+        min_entailment: float = 0.5,
+    ) -> list[dict]:
+        """Return sources ranked by estimated entailment."""
+
+        if not 0 <= min_entailment <= 1:
+            raise ValueError(
+                "min_entailment must be between 0 and 1."
+            )
+
+        if not claim.strip():
+            raise ValueError("Claim cannot be empty.")
+
+        matches = []
+
+        for source in sources:
+            result = self.verify(
+                claim=claim,
+                evidence=source["text"],
+            )
+
+            entailment = result["probabilities"]["entailment"]
+
+            if (
+                result["label"] == "entailment"
+                and entailment >= min_entailment
+            ):
+                matches.append({
+                    "source_id": source["source_id"],
+                    "document_id": source["document_id"],
+                    "page_number": source["page_number"],
+                    "chunk_id": source["chunk_id"],
+                    "entailment_score": round(entailment, 4),
+                })
+
+        return sorted(
+            matches,
+            key=lambda item: item["entailment_score"],
+            reverse=True,
+        )
