@@ -1,7 +1,6 @@
 
 from types import SimpleNamespace
-from unittest.mock import Mock
-
+from unittest.mock import Mock, patch
 from django.test import SimpleTestCase
 
 from documents.services.rag import RAGService
@@ -242,3 +241,132 @@ class RAGServiceTests(SimpleTestCase):
 
         self.assertEqual(result["sources"][0]["chunk_id"], 10)
 
+    
+    @patch("documents.services.rag.ClaimVerificationService")
+    def test_ask_does_not_initialize_verifier_by_default(
+        self,
+        mock_verifier_class,
+    ):
+        """Normal RAG requests must not load the NLI verifier."""
+
+        result = self.service.ask("What is RDF?")
+
+        self.assertNotIn("citation_verification", result)
+        mock_verifier_class.assert_not_called()
+
+    def test_ask_runs_citation_verification_when_enabled(self):
+        """Verification receives the answer and exact source metadata."""
+
+        verifier = Mock()
+        expected_verification = [
+            {
+                "claim": "RDF represents data using triples.",
+                "source_id": 1,
+                "supported": True,
+                "label": "entailment",
+                "confidence": 0.92,
+                "alternative_sources": [],
+            }
+        ]
+
+        verifier.verify_answer.return_value = expected_verification
+
+        self.service.claim_verification_service = verifier
+
+        result = self.service.ask(
+            "What is RDF?",
+            verify_citations=True,
+        )
+
+        self.assertEqual(
+            result["citation_verification"],
+            expected_verification,
+        )
+
+        verifier.verify_answer.assert_called_once_with(
+            answer=result["answer"],
+            sources=result["sources"],
+        )
+
+        self.assertEqual(result["sources"][0]["chunk_id"], 10)
+        self.assertEqual(result["citations"][0]["source_id"], 1)
+
+    @patch("documents.services.rag.ClaimVerificationService")
+    def test_ask_lazily_initializes_verifier(
+        self,
+        mock_verifier_class,
+    ):
+        """The verifier is initialized only on an enabled request."""
+
+        mock_verifier_class.return_value.verify_answer.return_value = []
+
+        self.service.ask("What is RDF?")
+
+        mock_verifier_class.assert_not_called()
+
+        result = self.service.ask(
+            "What is RDF?",
+            verify_citations=True,
+        )
+
+        mock_verifier_class.assert_called_once_with()
+
+        self.assertEqual(result["citation_verification"], [])
+
+        mock_verifier_class.return_value.verify_answer.assert_called_once_with(
+            answer=result["answer"],
+            sources=result["sources"],
+        )
+
+    @patch("documents.services.rag.ClaimVerificationService")
+    def test_ask_returns_empty_verification_without_evidence(
+        self,
+        mock_verifier_class,
+    ):
+        """No retrieved chunks must not trigger verification."""
+
+        self.retrieval.search.return_value = []
+
+        result = self.service.ask(
+            "Unknown question",
+            verify_citations=True,
+        )
+
+        self.assertEqual(result["sources"], [])
+        self.assertEqual(result["citations"], [])
+        self.assertEqual(result["citation_verification"], [])
+
+        mock_verifier_class.assert_not_called()
+        self.llm.generate.assert_not_called()
+
+    @patch("documents.services.rag.ClaimVerificationService")
+    def test_ask_returns_empty_verification_after_context_selection(
+        self,
+        mock_verifier_class,
+    ):
+        """Removing all chunks during selection must skip verification."""
+
+        selector = Mock()
+        selector.select.return_value = []
+
+        service = RAGService(
+            retrieval_service=self.retrieval,
+            reranking_service=self.reranker,
+            llm_client=self.llm,
+            prompt_builder=self.builder,
+            context_selection_service=selector,
+            use_context_selection=True,
+        )
+
+        result = service.ask(
+            "What is RDF?",
+            verify_citations=True,
+        )
+
+        self.assertEqual(result["sources"], [])
+        self.assertEqual(result["citations"], [])
+        self.assertEqual(result["citation_verification"], [])
+
+        selector.select.assert_called_once()
+        mock_verifier_class.assert_not_called()
+        self.llm.generate.assert_not_called()
