@@ -17,6 +17,7 @@ import type { RAGResponse, RAGSource } from "@/types/chat"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { CitationVerification } from "@/components/assistant/CitationVerification"
 
 interface ChatMessage {
   id: number
@@ -93,7 +94,9 @@ export function AssistantPage() {
     async function loadDocuments() {
       try {
         const data = await getDocuments(controller.signal)
-        setDocuments(data.filter((document) => document.status === "ready"))
+        setDocuments(
+          data.filter((document) => document.status === "ready"),
+        )
         setDocumentsError(null)
       } catch (error: unknown) {
         if (controller.signal.aborted) return
@@ -120,7 +123,12 @@ export function AssistantPage() {
 
     const trimmedQuestion = question.trim()
 
-    if (!trimmedQuestion || loading || documentsLoading || documentsError) {
+    if (
+      !trimmedQuestion ||
+      loading ||
+      documentsLoading ||
+      documentsError
+    ) {
       return
     }
 
@@ -228,6 +236,13 @@ export function AssistantPage() {
                   sources={message.result.sources}
                 />
 
+                {/* Citation verification */}
+                <CitationVerification
+                  results={message.result.citation_verification}
+                  sources={message.result.sources}
+                />
+
+                {/* Existing cited evidence */}
                 {message.result.citations.length > 0 && (
                   <div className="space-y-3 border-t pt-4">
                     <h3 className="text-sm font-semibold">
@@ -256,6 +271,7 @@ export function AssistantPage() {
                           <p className="text-xs text-muted-foreground">
                             Page {source.page_number}
                           </p>
+
                           <p className="mt-3 line-clamp-4 text-xs leading-5 text-muted-foreground">
                             {source.text}
                           </p>
@@ -289,7 +305,11 @@ export function AssistantPage() {
                 onChange={(event) =>
                   setSelectedDocumentId(event.target.value)
                 }
-                disabled={loading || documentsLoading || !!documentsError}
+                disabled={
+                  loading ||
+                  documentsLoading ||
+                  !!documentsError
+                }
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
               >
                 <option value="">All documents</option>

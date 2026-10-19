@@ -7,6 +7,7 @@ export async function askQuestion(
   question: string,
   limit = 5,
   documentId?: number,
+  verifyCitations = true,
 ): Promise<RAGResponse> {
   const response = await fetch(ASK_ENDPOINT, {
     method: "POST",
@@ -16,6 +17,7 @@ export async function askQuestion(
     body: JSON.stringify({
       question,
       limit,
+      verify_citations: verifyCitations,
       ...(documentId !== undefined
         ? { document_id: documentId }
         : {}),
