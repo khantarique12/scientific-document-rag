@@ -7,12 +7,18 @@ from documents.services.retrieval import RetrievalService
 from documents.services.reranking import RerankingService
 from documents.services.citations import CitationService
 from documents.services.context_selection import ContextSelectionService
+from documents.services.claim_verification import ClaimVerificationService
 
 
 class RAGService:
     """Generate answers grounded in retrieved document passages."""
 
     CANDIDATE_LIMIT = 30
+
+    INSUFFICIENT_EVIDENCE = (
+        "The answer cannot be determined from "
+        "the provided documents."
+    )
 
     def __init__(
         self,
@@ -23,6 +29,7 @@ class RAGService:
         use_reranking=True,
         context_selection_service=None,
         use_context_selection=True,
+        claim_verification_service=None,
     ):
         self.retrieval_service = (
             retrieval_service
@@ -46,19 +53,46 @@ class RAGService:
         self.reranking_service = reranking_service
 
         self.use_context_selection = use_context_selection
+
         self.context_selection_service = (
             context_selection_service
             if context_selection_service is not None
             else ContextSelectionService()
         )
 
+        # Lazy initialization avoids loading the NLI model
+        # unless citation verification is requested.
+        self.claim_verification_service = (
+            claim_verification_service
+        )
+
+    def _empty_result(
+        self,
+        question: str,
+        verify_citations: bool = False,
+    ) -> dict:
+        """Return a consistent response when no evidence is found."""
+
+        result = {
+            "question": question,
+            "answer": self.INSUFFICIENT_EVIDENCE,
+            "sources": [],
+            "citations": [],
+        }
+
+        if verify_citations:
+            result["citation_verification"] = []
+
+        return result
+
     def ask(
         self,
         question: str,
         limit: int = 5,
         document_id: int | None = None,
+        verify_citations: bool = False,
     ) -> dict:
-        """Retrieve, rerank, select evidence, and generate an answer."""
+        """Retrieve evidence, generate an answer, and optionally verify citations."""
 
         if not question.strip():
             raise ValueError("Question cannot be empty.")
@@ -84,15 +118,10 @@ class RAGService:
         )
 
         if not chunks:
-            return {
-                "question": question,
-                "answer": (
-                    "The answer cannot be determined from "
-                    "the provided documents."
-                ),
-                "sources": [],
-                "citations": [],
-            }
+            return self._empty_result(
+                question,
+                verify_citations,
+            )
 
         # Step 2: Rerank candidates by relevance.
         if self.use_reranking:
@@ -121,15 +150,10 @@ class RAGService:
             chunks = chunks[:limit]
 
         if not chunks:
-            return {
-                "question": question,
-                "answer": (
-                    "The answer cannot be determined from "
-                    "the provided documents."
-                ),
-                "sources": [],
-                "citations": [],
-            }
+            return self._empty_result(
+                question,
+                verify_citations,
+            )
 
         # Step 4: Build an evidence-grounded prompt.
         prompt = self.prompt_builder.build(
@@ -140,22 +164,17 @@ class RAGService:
         # Step 5: Generate an answer using Ollama.
         answer = self.llm_client.generate(prompt).strip()
 
-        insufficient_evidence = (
-            "The answer cannot be determined from "
-            "the provided documents."
-        )
-
         if (
-            insufficient_evidence in answer
-            and answer != insufficient_evidence
+            self.INSUFFICIENT_EVIDENCE in answer
+            and answer != self.INSUFFICIENT_EVIDENCE
         ):
             answer = answer.replace(
-                insufficient_evidence,
+                self.INSUFFICIENT_EVIDENCE,
                 "",
             ).strip()
 
         if not answer:
-            answer = insufficient_evidence
+            answer = self.INSUFFICIENT_EVIDENCE
 
         # Step 6: Prepare source metadata.
         sources = []
@@ -181,9 +200,25 @@ class RAGService:
             sources,
         )
 
-        return {
+        result = {
             "question": question,
             "answer": answer,
             "sources": sources,
             "citations": citations,
         }
+
+        # Step 8: Optionally verify claim-source relationships.
+        if verify_citations:
+            if self.claim_verification_service is None:
+                self.claim_verification_service = (
+                    ClaimVerificationService()
+                )
+
+            result["citation_verification"] = (
+                self.claim_verification_service.verify_answer(
+                    answer=answer,
+                    sources=sources,
+                )
+            )
+
+        return result

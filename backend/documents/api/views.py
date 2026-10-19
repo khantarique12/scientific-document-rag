@@ -1,4 +1,6 @@
 
+"""API views for scientific document management and question answering."""
+
 from rest_framework import generics, status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
@@ -12,15 +14,20 @@ from .serializers import DocumentSerializer, QuestionSerializer
 
 
 class DocumentListCreateView(generics.ListCreateAPIView):
+    """List uploaded documents and upload new PDFs."""
+
     queryset = Document.objects.all().order_by("-created_at")
     serializer_class = DocumentSerializer
     parser_classes = [MultiPartParser, FormParser]
+
 
 class DocumentDetailView(generics.RetrieveAPIView):
     """Retrieve metadata for a single uploaded document."""
 
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
+
+
 class QuestionAnswerView(APIView):
     """Answer questions using indexed scientific documents."""
 
@@ -31,13 +38,18 @@ class QuestionAnswerView(APIView):
         question = serializer.validated_data["question"]
         document = serializer.validated_data.get("document_id")
         limit = serializer.validated_data["limit"]
+        verify_citations = serializer.validated_data["verify_citations"]
 
         try:
             result = RAGService().ask(
                 question=question,
                 limit=limit,
-                document_id=document.id if document is not None else None,
+                document_id=(
+                    document.id if document is not None else None
+                ),
+                verify_citations=verify_citations,
             )
+
         except OllamaError:
             return Response(
                 {
@@ -48,4 +60,7 @@ class QuestionAnswerView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        return Response(result, status=status.HTTP_200_OK)
+        return Response(
+            result,
+            status=status.HTTP_200_OK,
+        )

@@ -70,3 +70,8 @@ class QuestionSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+
+    verify_citations = serializers.BooleanField(
+        required=False,
+        default=False,
+    )
