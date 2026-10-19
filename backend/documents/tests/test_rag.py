@@ -212,7 +212,7 @@ class RAGServiceTests(SimpleTestCase):
 
         self.reranker.rerank.assert_not_called()
 
-    
+
     def test_ask_applies_context_selection(self):
         selector = Mock()
         selector.select.return_value = [self.chunk]
@@ -241,7 +241,7 @@ class RAGServiceTests(SimpleTestCase):
 
         self.assertEqual(result["sources"][0]["chunk_id"], 10)
 
-    
+
     @patch("documents.services.rag.ClaimVerificationService")
     def test_ask_does_not_initialize_verifier_by_default(
         self,
