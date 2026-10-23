@@ -217,6 +217,11 @@ class RAGServiceTests(SimpleTestCase):
         selector = Mock()
         selector.select.return_value = [self.chunk]
 
+        # New reranker interface returns (chunk, score) pairs.
+        self.reranker.rerank.return_value = [
+            (self.chunk, 4.5),
+        ]
+
         service = RAGService(
             retrieval_service=self.retrieval,
             reranking_service=self.reranker,
@@ -232,14 +237,21 @@ class RAGServiceTests(SimpleTestCase):
             "What is RDF?",
             [self.chunk],
             limit=10,
+            return_scores=True,
         )
 
         selector.select.assert_called_once_with(
             [self.chunk],
             limit=5,
+            scores=[4.5],
+            max_score_gap=1.5,
+            max_context_chars=6000,
         )
 
-        self.assertEqual(result["sources"][0]["chunk_id"], 10)
+        self.assertEqual(
+            result["sources"][0]["chunk_id"],
+            10,
+        )
 
 
     @patch("documents.services.rag.ClaimVerificationService")
@@ -349,6 +361,10 @@ class RAGServiceTests(SimpleTestCase):
         selector = Mock()
         selector.select.return_value = []
 
+        self.reranker.rerank.return_value = [
+            (self.chunk, 4.5),
+        ]
+
         service = RAGService(
             retrieval_service=self.retrieval,
             reranking_service=self.reranker,
@@ -367,6 +383,13 @@ class RAGServiceTests(SimpleTestCase):
         self.assertEqual(result["citations"], [])
         self.assertEqual(result["citation_verification"], [])
 
-        selector.select.assert_called_once()
+        selector.select.assert_called_once_with(
+            [self.chunk],
+            limit=5,
+            scores=[4.5],
+            max_score_gap=1.5,
+            max_context_chars=6000,
+        )
+
         mock_verifier_class.assert_not_called()
         self.llm.generate.assert_not_called()

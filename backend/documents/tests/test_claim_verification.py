@@ -126,7 +126,7 @@ class ClaimVerificationServiceTests(SimpleTestCase):
 
         self.assertEqual(results, [])
 
-    
+
     def test_suggests_alternative_for_unsupported_claim(self):
         self.verifier.verify.return_value = {
             "supported": False,
@@ -176,3 +176,94 @@ class ClaimVerificationServiceTests(SimpleTestCase):
         )
 
         self.verifier.find_supporting_sources.assert_not_called()
+
+
+    def test_splits_bullet_claims_with_shared_citation(self):
+        answer = (
+            "The SMART criteria for KPIs are: "
+            "• Specific: Clear and well-defined objectives. "
+            "• Measurable: Quantifiable data points. "
+            "• Achievable: Realistic targets. "
+            "[Source 1]"
+        )
+
+        results = self.service.verify_answer(
+            answer,
+            self.sources,
+        )
+
+        self.assertEqual(len(results), 3)
+
+        self.assertTrue(
+            all(item["source_id"] == 1 for item in results)
+        )
+
+        self.assertEqual(self.verifier.verify.call_count, 3)
+
+    def test_preserves_unsupported_atomic_claim(self):
+        answer = (
+            "SMART criteria: "
+            "• Specific: Clear objectives "
+            "• Measurable: Quantifiable progress "
+            "[Source 1]"
+        )
+
+        self.verifier.verify.side_effect = [
+            {
+                "supported": True,
+                "label": "entailment",
+                "confidence": 0.9,
+            },
+            {
+                "supported": False,
+                "label": "neutral",
+                "confidence": 0.8,
+            },
+        ]
+
+        results = self.service.verify_answer(
+            answer,
+            self.sources,
+        )
+
+        self.assertEqual(len(results), 2)
+        self.assertTrue(results[0]["supported"])
+        self.assertFalse(results[1]["supported"])
+        self.assertEqual(results[1]["label"], "neutral")
+
+
+    def test_splits_five_smart_criteria_into_atomic_claims(self):
+        answer = (
+            "The five SMART criteria for KPIs are: "
+            "• Specific: Clear and well-defined objectives. "
+            "• Measurable: Quantifiable data points to assess progress. "
+            "• Achievable: Realistic targets within the organization's capabilities. "
+            "• Relevant: Direct alignment with organizational goals. "
+            "• Time-bound: Defined time frames for evaluation. "
+            "[Source 1]"
+        )
+
+        results = self.service.verify_answer(
+            answer,
+            self.sources,
+        )
+
+        expected_claims = [
+            "Specific means clear and well-defined objectives.",
+            "Measurable means quantifiable data points to assess progress.",
+            "Achievable means realistic targets within the organization's capabilities.",
+            "Relevant means direct alignment with organizational goals.",
+            "Time-bound means defined time frames for evaluation.",
+        ]
+
+        self.assertEqual(
+            [result["claim"] for result in results],
+            expected_claims,
+        )
+
+        self.assertEqual(
+            [result["source_id"] for result in results],
+            [1] * 5,
+        )
+
+        self.assertEqual(self.verifier.verify.call_count, 5)

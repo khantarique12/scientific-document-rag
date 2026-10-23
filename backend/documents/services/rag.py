@@ -15,6 +15,10 @@ class RAGService:
 
     CANDIDATE_LIMIT = 30
 
+    # Experimental relevance and context selection settings.
+    MAX_SCORE_GAP = 1.5
+    MAX_CONTEXT_CHARS = 6000
+
     INSUFFICIENT_EVIDENCE = (
         "The answer cannot be determined from "
         "the provided documents."
@@ -123,7 +127,9 @@ class RAGService:
                 verify_citations,
             )
 
-        # Step 2: Rerank candidates by relevance.
+        # Step 2: Rerank candidates and preserve relevance scores.
+        scores = None
+
         if self.use_reranking:
             if self.reranking_service is None:
                 self.reranking_service = RerankingService()
@@ -134,17 +140,43 @@ class RAGService:
                 else limit
             )
 
-            chunks = self.reranking_service.rerank(
-                question,
-                chunks,
-                limit=rerank_limit,
-            )
+            if self.use_context_selection:
+                ranked = self.reranking_service.rerank(
+                    question,
+                    chunks,
+                    limit=rerank_limit,
+                    return_scores=True,
+                )
 
-        # Step 3: Remove substantially overlapping passages.
+                chunks = [
+                    chunk
+                    for chunk, _ in ranked
+                ]
+
+                scores = [
+                    score
+                    for _, score in ranked
+                ]
+
+            else:
+                chunks = self.reranking_service.rerank(
+                    question,
+                    chunks,
+                    limit=rerank_limit,
+                )
+
+        # Step 3: Select relevant, non-redundant evidence.
         if self.use_context_selection:
             chunks = self.context_selection_service.select(
                 chunks,
                 limit=limit,
+                scores=scores,
+                max_score_gap=(
+                    self.MAX_SCORE_GAP
+                    if scores is not None
+                    else None
+                ),
+                max_context_chars=self.MAX_CONTEXT_CHARS,
             )
         else:
             chunks = chunks[:limit]

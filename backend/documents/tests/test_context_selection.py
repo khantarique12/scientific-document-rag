@@ -80,3 +80,68 @@ class ContextSelectionServiceTests(SimpleTestCase):
 
     def test_handles_empty_chunks(self):
         self.assertEqual(self.service.select([]), [])
+
+
+    def test_filters_chunks_with_large_score_gap(self):
+        chunks = [
+            self.make_chunk(102, "The five SMART criteria."),
+            self.make_chunk(198, "General KPI discussion."),
+            self.make_chunk(246, "Machine learning KPI forecasting."),
+        ]
+
+        result = self.service.select(
+            chunks,
+            limit=5,
+            scores=[4.3875, 2.3326, 2.2616],
+            max_score_gap=1.5,
+        )
+
+        self.assertEqual(result, [chunks[0]])
+
+    def test_preserves_multiple_relevant_sources(self):
+        chunks = [
+            self.make_chunk(1, "RDF supports semantic data.", document_id=1),
+            self.make_chunk(2, "OWL supports ontology modeling.", document_id=2),
+            self.make_chunk(3, "Unrelated background.", document_id=3),
+        ]
+
+        result = self.service.select(
+            chunks,
+            scores=[5.0, 4.7, 1.0],
+            max_score_gap=1.5,
+        )
+
+        self.assertEqual(result, chunks[:2])
+
+    def test_respects_context_budget(self):
+        chunks = [
+            self.make_chunk(1, "A" * 100),
+            self.make_chunk(2, "B" * 100),
+            self.make_chunk(3, "C" * 100),
+        ]
+
+        result = self.service.select(
+            chunks,
+            max_context_chars=220,
+        )
+
+        self.assertEqual(result, chunks[:2])
+
+    def test_rejects_mismatched_scores(self):
+        chunks = [self.make_chunk(1, "Scientific evidence.")]
+
+        with self.assertRaises(ValueError):
+            self.service.select(
+                chunks,
+                scores=[5.0, 4.0],
+                max_score_gap=1.5,
+            )
+
+    def test_rejects_gap_without_scores(self):
+        chunks = [self.make_chunk(1, "Scientific evidence.")]
+
+        with self.assertRaises(ValueError):
+            self.service.select(
+                chunks,
+                max_score_gap=1.5,
+            )

@@ -21,6 +21,17 @@ export function CitationVerification({ results, sources }: Props) {
     sources.map((source) => [source.source_id, source]),
   )
 
+  const groupedResults = new Map<
+    number,
+    CitationVerificationResult[]
+  >()
+
+  for (const result of results) {
+    const group = groupedResults.get(result.source_id) ?? []
+    group.push(result)
+    groupedResults.set(result.source_id, group)
+  }
+
   return (
     <section className="space-y-3 border-t pt-4">
       <h3 className="text-sm font-semibold">
@@ -31,89 +42,113 @@ export function CitationVerification({ results, sources }: Props) {
         Automated evidence checks are estimates, not proof of accuracy.
       </p>
 
-      {results.map((result, index) => {
-        const citedSource = sourceMap.get(result.source_id)
+      {Array.from(groupedResults.entries()).map(
+        ([sourceId, claims]) => {
+          const citedSource = sourceMap.get(sourceId)
 
-        return (
-          <div
-            key={`${result.source_id}-${index}`}
-            className="space-y-3 rounded-lg border p-4"
-          >
-            <div className="flex items-center gap-2">
-              {result.supported ? (
-                <>
+          const supportedCount = claims.filter(
+            (claim) => claim.supported,
+          ).length
+
+          const allSupported =
+            supportedCount === claims.length
+
+          return (
+            <div
+              key={sourceId}
+              className="space-y-3 rounded-lg border p-4"
+            >
+              <div className="flex items-center gap-2">
+                {allSupported ? (
                   <CheckCircle2 className="size-4 text-green-600" />
-                  <span className="text-sm font-medium">
-                    Evidence appears to support this citation
-                  </span>
-                </>
-              ) : (
-                <>
+                ) : (
                   <AlertTriangle className="size-4 text-amber-600" />
-                  <span className="text-sm font-medium">
-                    Citation needs review
-                  </span>
-                </>
-              )}
-            </div>
+                )}
 
-            <p className="text-sm leading-6">
-              {result.claim}
-            </p>
+                <span className="text-sm font-medium">
+                  {allSupported
+                    ? "Citation appears supported"
+                    : "Citation needs review"}
+                </span>
+              </div>
 
-            <div className="text-xs text-muted-foreground">
-              Cited source: {result.source_id}
+              <p className="text-sm text-muted-foreground">
+                {supportedCount} of {claims.length} claims supported
+                {" · "}
+                Source {sourceId}
+                {citedSource &&
+                  ` · Page ${citedSource.page_number}`}
+              </p>
+
               {citedSource && (
-                <>
-                  {" · "}
-                  Page {citedSource.page_number}
-                </>
+                <Link
+                  to={`/documents/${citedSource.document_id}?page=${citedSource.page_number}`}
+                  className="inline-flex items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
+                >
+                  <BookOpen className="size-3" />
+                  Open cited passage
+                </Link>
               )}
-              {" · "}
-              Model label: {result.label}
-            </div>
 
-            {citedSource && (
-              <Link
-                to={`/documents/${citedSource.document_id}?page=${citedSource.page_number}`}
-                className="inline-flex items-center gap-1 text-xs font-medium underline-offset-4 hover:underline"
-              >
-                <BookOpen className="size-3" />
-                Open cited passage
-              </Link>
-            )}
+              <details className="border-t pt-3">
+                <summary className="cursor-pointer text-xs font-medium">
+                  View individual claims
+                </summary>
 
-            {!result.supported &&
-              result.alternative_sources.length > 0 && (
-                <div className="space-y-2 border-t pt-3">
-                  <p className="text-xs font-semibold">
-                    Suggested evidence to review
-                  </p>
-
-                  {result.alternative_sources.map((alternative) => (
-                    <Link
-                      key={`${alternative.source_id}-${alternative.chunk_id}`}
-                      to={`/documents/${alternative.document_id}?page=${alternative.page_number}`}
-                      className="flex items-center justify-between gap-3 rounded-md border p-3 text-xs hover:bg-accent"
+                <div className="mt-3 space-y-3">
+                  {claims.map((claim, index) => (
+                    <div
+                      key={index}
+                      className="rounded-md border p-3 text-xs"
                     >
-                      <span>
-                        Source {alternative.source_id}
-                        {" · "}
-                        Page {alternative.page_number}
-                        {" · "}
-                        Chunk {alternative.chunk_id}
-                      </span>
+                      <div className="mb-2 flex items-center gap-2">
+                        {claim.supported ? (
+                          <CheckCircle2 className="size-3 text-green-600" />
+                        ) : (
+                          <AlertTriangle className="size-3 text-amber-600" />
+                        )}
 
-                      <span className="text-muted-foreground">
-                        Candidate
-                      </span>
-                    </Link>
+                        <span className="font-medium">
+                          {claim.label}
+                        </span>
+                      </div>
+
+                      <p className="leading-5">
+                        {claim.claim}
+                      </p>
+
+                      {!claim.supported &&
+                        claim.alternative_sources.length > 0 && (
+                          <div className="mt-3 space-y-2 border-t pt-3">
+                            <p className="font-medium">
+                              Suggested evidence to review
+                            </p>
+
+                            {claim.alternative_sources.map(
+                              (alternative) => (
+                                <Link
+                                  key={`${alternative.source_id}-${alternative.chunk_id}`}
+                                  to={`/documents/${alternative.document_id}?page=${alternative.page_number}`}
+                                  className="block rounded border p-2 hover:bg-accent"
+                                >
+                                  Source {alternative.source_id}
+                                  {" · "}
+                                  Page {alternative.page_number}
+                                  {" · "}
+                                  Chunk {alternative.chunk_id}
+                                </Link>
+                              ),
+                            )}
+                          </div>
+                        )}
+                    </div>
                   ))}
                 </div>
-              )}
-          </div>
-        )
-      })}
+              </details>
+            </div>
+          )
+        },
+      )}
     </section>
   )
 }

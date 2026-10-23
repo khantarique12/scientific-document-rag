@@ -1,18 +1,27 @@
+"""Rerank retrieved chunks using a cross-encoder."""
 
 from sentence_transformers import CrossEncoder
 
 
 class RerankingService:
-    """Rerank retrieved chunks using a cross-encoder."""
+    """Rank passages and optionally return their relevance scores."""
 
     MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L6-v2"
 
     def __init__(self, model=None):
-        self.model = model if model is not None else CrossEncoder(
-            self.MODEL_NAME
+        self.model = (
+            model
+            if model is not None
+            else CrossEncoder(self.MODEL_NAME)
         )
 
-    def rerank(self, query, chunks, limit=5):
+    def rerank(
+        self,
+        query,
+        chunks,
+        limit=5,
+        return_scores=False,
+    ):
         if not query.strip():
             raise ValueError("Query cannot be empty.")
 
@@ -26,9 +35,17 @@ class RerankingService:
         scores = self.model.predict(pairs)
 
         ranked = sorted(
-            zip(chunks, scores),
-            key=lambda item: float(item[1]),
+            (
+                (chunk, float(score))
+                for chunk, score in zip(chunks, scores)
+            ),
+            key=lambda item: item[1],
             reverse=True,
         )
 
-        return [chunk for chunk, _ in ranked[:limit]]
+        ranked = ranked[:limit]
+
+        if return_scores:
+            return ranked
+
+        return [chunk for chunk, _ in ranked]
