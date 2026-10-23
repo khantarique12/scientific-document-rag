@@ -1,0 +1,82 @@
+
+{
+  "version": "1.0",
+  "description": "Scientific document retrieval benchmark with manually inspected evidence",
+  "cases": [
+    {
+      "id": "smart_criteria",
+      "question": "What are the five SMART criteria for KPIs?",
+      "document_id": 5,
+      "relevant_chunk_ids": [102],
+      "expected_facts": [
+        "Specific",
+        "Measurable",
+        "Achievable",
+        "Relevant",
+        "Time-bound"
+      ]
+    },
+    {
+      "id": "kpi_statistical_selection",
+      "question": "Which statistical measures were used to select KPIs?",
+      "document_id": 5,
+      "relevant_chunk_ids": [230],
+      "expected_facts": [
+        "Mean",
+        "Standard deviation"
+      ]
+    },
+    {
+      "id": "semantic_kpi_validation",
+      "question": "How are extracted KPIs represented and validated?",
+      "document_id": 7,
+      "relevant_chunk_ids": [312],
+      "expected_facts": [
+        "RDF",
+        "OWL",
+        "Pearson correlation"
+      ]
+    },
+    {
+      "id": "pearson_validation",
+      "question": "Which statistical method validates extracted KPIs?",
+      "document_id": 7,
+      "relevant_chunk_ids": [342],
+      "expected_facts": [
+        "Pearson correlation"
+      ]
+    },
+    {
+      "id": "kpi_categories",
+      "question": "What do productivity and quality indicators measure?",
+      "document_id": 8,
+      "relevant_chunk_ids": [376],
+      "expected_facts": [
+        "Operational efficiency",
+        "Quality of production",
+        "Process effectiveness"
+      ]
+    },
+    {
+      "id": "forecasting_metrics",
+      "question": "Which evaluation metrics were used for KPI forecasting models?",
+      "document_id": 9,
+      "relevant_chunk_ids": [413],
+      "expected_facts": [
+        "MSE",
+        "RMSE",
+        "MAE",
+        "R2"
+      ]
+    },
+    {
+      "id": "lstm_r2",
+      "question": "What R2 value was reported for the LSTM model?",
+      "document_id": 9,
+      "relevant_chunk_ids": [422],
+      "expected_facts": [
+        "0.91"
+      ]
+    }
+  ]
+}
