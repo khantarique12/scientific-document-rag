@@ -21,3 +21,6 @@ staticfiles/
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated RAG evaluation reports
+/backend/documents/evaluation/results/
