@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from documents.evaluation.metrics import (
+    hit_at_k,
     mean_reciprocal_rank,
     recall_at_k,
 )
@@ -109,6 +110,8 @@ class RetrievalEvaluationRunner:
                     "id": case["id"],
                     "retrieved_chunk_ids": retrieved_ids,
                     "relevant_chunk_ids": sorted(relevant_ids),
+
+                    # Recall: fraction of relevant chunks retrieved
                     "recall_at_1": recall_at_k(
                         retrieved_ids, relevant_ids, 1
                     ),
@@ -116,6 +119,17 @@ class RetrievalEvaluationRunner:
                         retrieved_ids, relevant_ids, 5
                     ),
                     "recall_at_10": recall_at_k(
+                        retrieved_ids, relevant_ids, 10
+                    ),
+
+                    # Hit: whether at least one relevant chunk is retrieved
+                    "hit_at_1": hit_at_k(
+                        retrieved_ids, relevant_ids, 1
+                    ),
+                    "hit_at_5": hit_at_k(
+                        retrieved_ids, relevant_ids, 5
+                    ),
+                    "hit_at_10": hit_at_k(
                         retrieved_ids, relevant_ids, 10
                     ),
                 })
@@ -130,6 +144,17 @@ class RetrievalEvaluationRunner:
                 "recall_at_10": sum(
                     case["recall_at_10"] for case in case_results
                 ) / len(case_results),
+
+                "hit_at_1": sum(
+                    case["hit_at_1"] for case in case_results
+                ) / len(case_results),
+                "hit_at_5": sum(
+                    case["hit_at_5"] for case in case_results
+                ) / len(case_results),
+                "hit_at_10": sum(
+                    case["hit_at_10"] for case in case_results
+                ) / len(case_results),
+
                 "mrr": mean_reciprocal_rank(
                     rankings,
                     relevant_sets,

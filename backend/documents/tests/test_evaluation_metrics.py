@@ -4,6 +4,7 @@
 from django.test import SimpleTestCase
 
 from documents.evaluation.metrics import (
+    hit_at_k,
     mean_reciprocal_rank,
     recall_at_k,
     reciprocal_rank,
@@ -74,3 +75,19 @@ class RetrievalMetricsTests(SimpleTestCase):
                 rankings=[[10]],
                 relevant_sets=[{10}, {20}],
             )
+
+    def test_hit_at_k_finds_relevant_chunk(self):
+        retrieved = [10, 20, 30]
+        relevant = {20, 40}
+
+        self.assertEqual(hit_at_k(retrieved, relevant, 1), 0.0)
+        self.assertEqual(hit_at_k(retrieved, relevant, 2), 1.0)
+        self.assertEqual(hit_at_k(retrieved, relevant, 3), 1.0)
+
+
+    def test_hit_at_k_rejects_invalid_inputs(self):
+        with self.assertRaises(ValueError):
+            hit_at_k([10], {10}, 0)
+
+        with self.assertRaises(ValueError):
+            hit_at_k([10], set(), 5)

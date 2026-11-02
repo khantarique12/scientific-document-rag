@@ -19,6 +19,20 @@ def recall_at_k(
 
     return len(top_k & relevant_ids) / len(relevant_ids)
 
+def hit_at_k(
+    retrieved_ids: list[int],
+    relevant_ids: set[int],
+    k: int,
+) -> float:
+    """Return 1 if at least one relevant chunk appears in the top k."""
+    if k <= 0:
+        raise ValueError("k must be greater than zero")
+
+    if not relevant_ids:
+        raise ValueError("relevant_ids must not be empty")
+
+    return float(bool(set(retrieved_ids[:k]) & relevant_ids))
+
 
 def reciprocal_rank(
     retrieved_ids: list[int],

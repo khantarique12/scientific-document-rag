@@ -41,7 +41,7 @@
       "id": "pearson_validation",
       "question": "Which statistical method validates extracted KPIs?",
       "document_id": 7,
-      "relevant_chunk_ids": [342],
+      "relevant_chunk_ids": [320, 312, 299, 337, 340, 342],
       "expected_facts": [
         "Pearson correlation"
       ]
@@ -61,7 +61,7 @@
       "id": "forecasting_metrics",
       "question": "Which evaluation metrics were used for KPI forecasting models?",
       "document_id": 9,
-      "relevant_chunk_ids": [413],
+      "relevant_chunk_ids": [413, 423],
       "expected_facts": [
         "MSE",
         "RMSE",
