@@ -17,29 +17,26 @@ class QuestionAnswerAPITests(APITestCase):
 
     @patch("documents.api.views.RAGService")
     def test_returns_answer_and_citations(self, mock_rag_service):
+        """The API must preserve valid and invalid citation references."""
+
+        source = {
+            "source_id": 1,
+            "document_id": 1,
+            "document_title": "Scientific Paper",
+            "page_number": 12,
+            "chunk_id": 5,
+            "similarity": 0.85,
+        }
+
         expected_result = {
             "question": "What is RDF?",
-            "answer": "RDF represents data as triples [Source 1].",
-            "sources": [
-                {
-                    "source_id": 1,
-                    "document_id": 1,
-                    "document_title": "Scientific Paper",
-                    "page_number": 12,
-                    "chunk_id": 5,
-                    "similarity": 0.85,
-                }
-            ],
-            "citations": [
-                {
-                    "source_id": 1,
-                    "document_id": 1,
-                    "document_title": "Scientific Paper",
-                    "page_number": 12,
-                    "chunk_id": 5,
-                    "similarity": 0.85,
-                }
-            ],
+            "answer": (
+                "RDF represents data as triples [Source 1]. "
+                "Another statement cites [Source 99]."
+            ),
+            "sources": [source],
+            "citations": [source],
+            "invalid_citations": [99],
         }
 
         mock_rag_service.return_value.ask.return_value = expected_result
@@ -55,6 +52,11 @@ class QuestionAnswerAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, expected_result)
+        self.assertEqual(response.data["invalid_citations"], [99])
+        self.assertEqual(
+            response.data["citations"][0]["source_id"],
+            1,
+        )
 
         mock_rag_service.return_value.ask.assert_called_once_with(
             question="What is RDF?",
@@ -101,6 +103,7 @@ class QuestionAnswerAPITests(APITestCase):
             "answer": "No relevant information found.",
             "sources": [],
             "citations": [],
+            "invalid_citations": [],
         }
 
         response = self.client.post(
@@ -110,6 +113,7 @@ class QuestionAnswerAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["invalid_citations"], [])
 
         mock_rag_service.return_value.ask.assert_called_once_with(
             question="What is RDF?",
@@ -149,6 +153,7 @@ class QuestionAnswerAPITests(APITestCase):
             "answer": "RDF represents data as triples.",
             "sources": [],
             "citations": [],
+            "invalid_citations": [],
         }
 
         response = self.client.post(
@@ -221,8 +226,27 @@ class QuestionAnswerAPITests(APITestCase):
         expected_result = {
             "question": "What is RDF?",
             "answer": "RDF represents data as triples [Source 1].",
-            "sources": [],
-            "citations": [],
+            "sources": [
+                {
+                    "source_id": 1,
+                    "document_id": 1,
+                    "document_title": "Scientific Paper",
+                    "page_number": 12,
+                    "chunk_id": 5,
+                    "similarity": 0.85,
+                }
+            ],
+            "citations": [
+                {
+                    "source_id": 1,
+                    "document_id": 1,
+                    "document_title": "Scientific Paper",
+                    "page_number": 12,
+                    "chunk_id": 5,
+                    "similarity": 0.85,
+                }
+            ],
+            "invalid_citations": [],
             "citation_verification": [
                 {
                     "claim": "RDF represents data as triples.",
@@ -250,6 +274,7 @@ class QuestionAnswerAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, expected_result)
         self.assertIn("citation_verification", response.data)
+        self.assertEqual(response.data["invalid_citations"], [])
 
         mock_rag_service.return_value.ask.assert_called_once_with(
             question="What is RDF?",
@@ -263,13 +288,14 @@ class QuestionAnswerAPITests(APITestCase):
         self,
         mock_rag_service,
     ):
-        """Explicit false preserves the original API response."""
+        """Explicit false must not trigger claim verification."""
 
         expected_result = {
             "question": "What is RDF?",
             "answer": "RDF represents data as triples.",
             "sources": [],
             "citations": [],
+            "invalid_citations": [],
         }
 
         mock_rag_service.return_value.ask.return_value = expected_result

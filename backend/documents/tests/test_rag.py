@@ -56,6 +56,28 @@ class RAGServiceTests(SimpleTestCase):
             "RDF represents data using triples [Source 1].",
         )
 
+
+    def test_ask_reports_invalid_citations(self):
+        self.llm.generate.return_value = (
+            "RDF uses triples [Source 99]. "
+            "The document describes RDF [Source 1]."
+        )
+
+        result = self.service.ask("What is RDF?")
+
+        self.assertEqual(result["invalid_citations"], [99])
+        self.assertEqual(
+            [citation["source_id"] for citation in result["citations"]],
+            [1],
+        )
+        self.assertIn("[Source 99]", result["answer"])
+
+    def test_ask_returns_no_invalid_citations(self):
+        result = self.service.ask("What is RDF?")
+
+        self.assertEqual(result["invalid_citations"], [])
+
+
     def test_ask_calls_retrieval(self):
         self.service.ask("What is RDF?", limit=3)
 

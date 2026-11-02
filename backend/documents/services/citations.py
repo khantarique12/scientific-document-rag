@@ -33,3 +33,29 @@ class CitationService:
             seen.add(source_id)
 
         return citations
+
+
+    @classmethod
+    def find_invalid_citations(
+        cls,
+        answer: str,
+        sources: list[dict],
+    ) -> list[int]:
+        """Return unknown source IDs in first-occurrence order."""
+
+        valid_ids = {
+            source["source_id"]
+            for source in sources
+        }
+
+        invalid_ids = []
+        seen = set()
+
+        for match in cls.CITATION_PATTERN.finditer(answer):
+            source_id = int(match.group(1))
+
+            if source_id not in valid_ids and source_id not in seen:
+                invalid_ids.append(source_id)
+                seen.add(source_id)
+
+        return invalid_ids

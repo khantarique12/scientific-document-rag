@@ -82,6 +82,7 @@ class RAGService:
             "answer": self.INSUFFICIENT_EVIDENCE,
             "sources": [],
             "citations": [],
+            "invalid_citations": [],
         }
 
         if verify_citations:
@@ -226,8 +227,13 @@ class RAGService:
                 "text": chunk.text,
             })
 
-        # Step 7: Extract citations from the generated answer.
+        # Step 7: Extract and validate citation references.
         citations = CitationService.extract(
+            answer,
+            sources,
+        )
+
+        invalid_citations = CitationService.find_invalid_citations(
             answer,
             sources,
         )
@@ -237,6 +243,7 @@ class RAGService:
             "answer": answer,
             "sources": sources,
             "citations": citations,
+            "invalid_citations": invalid_citations,
         }
 
         # Step 8: Optionally verify claim-source relationships.

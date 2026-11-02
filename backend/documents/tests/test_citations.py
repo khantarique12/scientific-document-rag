@@ -62,3 +62,17 @@ class CitationServiceTests(SimpleTestCase):
         )
 
         self.assertEqual(result, [])
+
+
+    def test_detects_unknown_source_ids(self):
+        answer = (
+            "The LSTM R2 was 0.91 [Source 99]. "
+            "The result is reported in [Source 1]."
+        )
+
+        result = CitationService.find_invalid_citations(
+            answer,
+            self.sources,
+        )
+
+        self.assertEqual(result, [99])
