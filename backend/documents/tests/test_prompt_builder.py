@@ -48,7 +48,8 @@ class PromptBuilderTests(SimpleTestCase):
         self.assertIn("Scientific Paper", prompt)
         self.assertIn("Page: 12", prompt)
 
-    
+
+
     def test_build_includes_citation_instructions(self):
         prompt = PromptBuilder.build(
             "What is RDF?",
@@ -67,7 +68,11 @@ class PromptBuilderTests(SimpleTestCase):
             "Never cite a source number that is absent",
             prompt,
         )
-        self.assertIn("[Source 1]", prompt)
+        self.assertIn(
+            "Available citations: [Source 1]",
+            prompt,
+        )
+
 
 
     def test_build_rejects_empty_question(self):
@@ -95,6 +100,7 @@ class PromptBuilderTests(SimpleTestCase):
 
         self.assertIn("Do not use outside knowledge", prompt)
         self.assertIn("cannot be determined", prompt)
+
 
     def test_build_handles_partial_evidence(self):
         prompt = PromptBuilder.build(
